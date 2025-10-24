@@ -1,0 +1,19 @@
+# PyTorch 
+torch
+torchvision
+torchaudio
+
+# Transformers and tokenizers
+transformers
+tokenizers
+sentencepiece
+
+# Data processing
+pandas
+numpy
+scikit-learn
+tqdm
+pillow
+
+# Visualization
+matplotlib
