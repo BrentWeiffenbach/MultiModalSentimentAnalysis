@@ -16,13 +16,22 @@ class MVSADataset(Dataset):
         # Read the labels file
         self.samples = []
         with open(labels_file, 'r', encoding='utf-8') as f:
-            lines = f.readlines()[1:]  # skip header
+            lines = f.readlines()[1:] 
             for line in lines:
                 parts = line.strip().split('\t')
-                if len(parts) < 2: 
+                if len(parts) < 4: 
                     continue
                 sample_id = parts[0].strip()
-                label_str = parts[1].split(',')[0].strip()  # e.g. "positive"
+                
+                # Extract text sentiment from all 3 annotators
+                text_sentiments = []
+                for i in range(1, 4):  # columns 1, 2, 3 (the 3 annotators)
+                    if ',' in parts[i]:
+                        text_sentiment = parts[i].split(',')[0].strip()  # Get text part
+                        text_sentiments.append(text_sentiment)
+                
+                if len(text_sentiments) == 0:
+                    continue
                 
                 img_path = os.path.join(root_dir, f"{sample_id}.jpg")
                 if not os.path.exists(img_path):
@@ -32,19 +41,13 @@ class MVSADataset(Dataset):
                 if not (os.path.exists(img_path) and os.path.exists(text_path)):
                     continue
                 
-                self.samples.append((img_path, text_path, label_str))
+                self.samples.append((img_path, text_path, text_sentiments))
         
-        self.label_map = {
-            "positive": torch.tensor([1, 0, 0], dtype=torch.float),
-            "neutral":  torch.tensor([0, 1, 0], dtype=torch.float),
-            "negative": torch.tensor([0, 0, 1], dtype=torch.float),
-        }
-
     def __len__(self):
         return len(self.samples)
     
     def __getitem__(self, idx):
-        img_path, text_path, label_str = self.samples[idx]
+        img_path, text_path, text_sentiments = self.samples[idx]
 
         # Load image
         image = Image.open(img_path).convert("RGB")
@@ -54,13 +57,26 @@ class MVSADataset(Dataset):
         with open(text_path, 'r', encoding='utf-8') as f:
             text = f.read().strip()
 
-        label = self.label_map.get(label_str, torch.tensor([0, 0, 0], dtype=torch.float))
+        # Calculate percentage-based label from all annotators
+        # Count occurrences of each sentiment
+        positive_count = text_sentiments.count("positive")
+        neutral_count = text_sentiments.count("neutral")
+        negative_count = text_sentiments.count("negative")
+        total = len(text_sentiments)
+        
+        # Create label as percentages [positive, neutral, negative]
+        label = torch.tensor([
+            positive_count / total,
+            neutral_count / total,
+            negative_count / total
+        ], dtype=torch.float)
 
         return {"image": image, "text": text, "label": label}
 
 
 if __name__ == "__main__":
     dataset = MVSADataset("/home/rweiffenbach/MVSA/data", "/home/rweiffenbach/MVSA/labelResultAll.txt")
+    # dataset = MVSADataset("/home/brent/cs541/MultiModalSentimentAnalysis/MVSA/data", "/home/brent/cs541/MultiModalSentimentAnalysis/MVSA/labelResultAll.txt")
     loader = DataLoader(dataset, batch_size=4, shuffle=True)
 
     for batch in loader:

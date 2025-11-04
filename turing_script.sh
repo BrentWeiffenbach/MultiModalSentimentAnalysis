@@ -3,7 +3,7 @@
 #SBATCH -n 8                   #
 #SBATCH --mem=8g                        #
 #SBATCH -J "MultiModalSentimentAnalysis"   #
-#SBATCH -p short               #
+#SBATCH -p academic               #
 #SBATCH -t 12:00:00            #
 #SBATCH --gres=gpu:2           #
 
