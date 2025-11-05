@@ -14,15 +14,10 @@ module load miniconda3
 module load cuda
 module list
 
-# Create the conda environment if it doesn't exist
-if ! conda info --envs | grep -q mmsa_env; then
-    conda create -y -n mmsa_env python=3.11
-    source $(conda info --base)/etc/profile.d/conda.sh
-    conda activate mmsa_env
-    pip install -r requirements.txt
-else
-    source $(conda info --base)/etc/profile.d/conda.sh
-    conda activate mmsa_env
-fi
+# Create the conda environment
+conda create -y -n mmsa_env python=3.10.12
+source $(conda info --base)/etc/profile.d/conda.sh
+conda activate mmsa_env
+pip install -r requirements.txt
 
 python3 dataset_mvsa.py
