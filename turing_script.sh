@@ -5,7 +5,7 @@
 #SBATCH -J "pytorch example"      # name of the job
 #SBATCH -o pytorch_example_%j.out # name of the output file
 #SBATCH -e pytorch_example_%j.err # name of the error file
-#SBATCH -p short                  # partition to submit to
+#SBATCH -p academic                  # partition to submit to
 #SBATCH -t 01:00:00               # time limit of 1 hour
 #SBATCH --gres=gpu:1              # request 1 GPU
 
