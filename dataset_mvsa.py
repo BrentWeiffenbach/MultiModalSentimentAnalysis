@@ -75,8 +75,10 @@ class MVSADataset(Dataset):
 
 
 if __name__ == "__main__":
-    dataset = MVSADataset("/home/rweiffenbach/MVSA/data", "/home/rweiffenbach/MVSA/labelResultAll.txt")
-    # dataset = MVSADataset("/home/brent/cs541/MultiModalSentimentAnalysis/MVSA/data", "/home/brent/cs541/MultiModalSentimentAnalysis/MVSA/labelResultAll.txt")
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, "MVSA", "data")
+    labels_file = os.path.join(base_dir, "MVSA", "labelResultAll.txt")
+    dataset = MVSADataset(data_dir, labels_file)
     loader = DataLoader(dataset, batch_size=4, shuffle=True)
 
     for batch in loader:
