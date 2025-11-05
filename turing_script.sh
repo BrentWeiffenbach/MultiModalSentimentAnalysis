@@ -7,7 +7,9 @@
 #SBATCH -t 12:00:00            #
 #SBATCH --gres=gpu:2           #
 
-module load python    #
-module load cuda/12.2 #
-
-python dataset_mvsa.py #
+module load python/3.10.12    #
+module load cuda/12.4.0/3mdaov5 #
+python3 -m venv .venv         #
+source .venv/bin/activate     #
+pip install -r requirements.txt #
+python3 dataset_mvsa.py #
