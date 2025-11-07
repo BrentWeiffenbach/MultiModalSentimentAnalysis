@@ -8,7 +8,7 @@ From scratch PyTorch implementation of a multimodal sentiment analysis deep lear
 2. Once you have SSH access, clone this repository into your home directory on Turing:
 
     ```bash
-    git clone https://github.com/BrentWeiffenbach/MultiModalSentimentAnalysis.git ~/
+    git clone https://github.com/BrentWeiffenbach/MultiModalSentimentAnalysis.git
     ```
 
 3. Use the Turing OnDemand dashboard to upload the MVSA dataset. Place the dataset in the repository under the following path:
