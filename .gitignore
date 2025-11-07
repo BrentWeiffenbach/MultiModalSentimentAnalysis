@@ -213,6 +213,7 @@ __marimo__/
 *.lot
 *.fls
 *.out
+*.err
 *.toc
 *.fmt
 *.fot
@@ -255,3 +256,5 @@ latex/
 
 # vscode
 .vscode/
+
+MVSA/
