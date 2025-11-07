@@ -1,9 +1,10 @@
 # Visual Transformer (ViT) implementation
-
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from typing import Optional, Tuple
+from typing import Tuple, Optional, Any
+import os
+from torch.utils.data import DataLoader
+from dataset_mvsa import MVSADataset
 
 def _to_2tuple(x):
     if isinstance(x, tuple):
@@ -13,7 +14,7 @@ def _to_2tuple(x):
 
 class PatchEmbed(nn.Module):
     """Split image into patches and linearly embed them."""
-    def __init__(self, img_size: int = 224, patch_size: int = 16, in_chans: int = 3, embed_dim: int = 768):
+    def __init__(self, img_size: tuple[int, int] | int = 224, patch_size: tuple[int, int] | int = 16, in_chans: int = 3, embed_dim: int = 768):
         super().__init__()
         img_size = _to_2tuple(img_size)
         patch_size = _to_2tuple(patch_size)
@@ -180,7 +181,7 @@ class VisionTransformer(nn.Module):
                 nn.init.zeros_(m.bias)
                 nn.init.ones_(m.weight)
 
-    def forward(self, x: torch.Tensor, return_patch_sequence: bool = False) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, return_patch_sequence: bool = False) -> Tuple[Any, torch.Tensor, Optional[Any]]:
         """
         return_patch_sequence: if True return (cls_embedding, patch_sequence_embeddings)
                                else return (cls_embedding, None)
@@ -213,23 +214,52 @@ class VisionTransformer(nn.Module):
             return cls_rep, patch_sequence, logits
         
 
-def _test_vit_forward():
-    device = torch.device("cpu")
-    model = VisionTransformer(img_size=224, patch_size=16, in_chans=3,
-                              num_classes=0, embed_dim=768, depth=4, num_heads=8,
-                              projection_dim=256)
+def main():
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, "MVSA", "data")
+    labels_file = os.path.join(base_dir, "MVSA", "labelResultAll.txt")
+    
+    dataset = MVSADataset(data_dir, labels_file)
+    loader = DataLoader(dataset, batch_size=2, shuffle=False)
+    
+    print(f"Dataset size: {len(dataset)}")
+    
+    model = VisionTransformer(
+        img_size=224,
+        patch_size=16,
+        in_chans=3,
+        num_classes=3,
+        embed_dim=768,
+        depth=4,
+        num_heads=8,
+        projection_dim=256
+    )
     model.to(device)
     model.eval()
-
-    dummy_input = torch.randn(2, 3, 224, 224)
+    
+    print("ViT Model initialized successfully")
+    print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
+    
+    # Test forward pass with batch from dataset
     with torch.no_grad():
-        proj, patches, logits = model(dummy_input, return_patch_sequence=True)
+        batch = next(iter(loader))
+        images = batch["image"].to(device)
+        
+        print(f"\nInput image shape: {images.shape}")
+        
+        proj, patches, logits = model(images, return_patch_sequence=True)
+        
+        print(f"Projection shape: {proj.shape}")
+        print(f"Patch sequence shape: {patches.shape}")
+        print(f"Logits shape: {logits.shape if logits is not None else 'None'}")
+        print(f"Logits (sentiment predictions): {logits}")
+        
+        print("\n✓ ViT architecture validated successfully!")
 
-    print("proj.shape:", proj.shape)
-    print("patches.shape:", patches.shape)
-    print("logits:", logits)
-
-_test_vit_forward()
-
+if __name__ == "__main__":
+    main()
 
 
