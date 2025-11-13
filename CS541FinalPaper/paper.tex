@@ -36,12 +36,12 @@
 
 % The \icmltitle you define below is probably too long as a header.
 % Therefore, a short form for the running title is supplied here:
-\icmltitlerunning{Title of My Paper}
+\icmltitlerunning{Multimodal Sentiment Analysis}
 
 \begin{document} 
 
 \twocolumn[
-\icmltitle{Title of My Paper}
+\icmltitle{Multimodal Sentiment Analysis with Vision Transformers and BERT}
 
 % It is OKAY to include author information, even for blind
 % submissions: the style file will automatically remove it for you
@@ -54,23 +54,20 @@
 % Industry affiliations should list Company, City, Region, Country
 
 % you can specify symbols, otherwise they are numbered in order
-% ideally, you should not use this facility. affiliations will be numbered
-% in order of appearance and this is the preferred way.
-\icmlsetsymbol{equal}{*}
 
 \begin{icmlauthorlist}
-\icmlauthor{Aeiau Zzzz}{wpi}
-\icmlauthor{Bauiu C.~Yyyy}{wpi}
+    \icmlauthor{Brent Weiffenbach}{wpi}
+    \icmlauthor{Mauricio Mergal}{wpi}
+    \icmlauthor{Jeffrey Li}{wpi}
+    \icmlauthor{Tanveer Kaur}{wpi}
 \end{icmlauthorlist}
 
 \icmlaffiliation{wpi}{Worcester Polytechnic Institute}
-
-\icmlcorrespondingauthor{Cieua Vvvvv}{c.vvvvv@wpi.edu}
-
-% You may provide any keywords that you 
-% find helpful for describing your paper; these are used to populate 
-% the "keywords" metadata in the PDF but will not be shown in the document
-\icmlkeywords{boring formatting information, machine learning, ICML}
+\icmlcorrespondingauthor{Brent Weiffenbach}{rweiffenbach@wpi.edu}
+\icmlcorrespondingauthor{Mauricio Mergal}{mjmergal@wpi.edu}
+\icmlcorrespondingauthor{Jeffrey Li}{jcli@wpi.edu}
+\icmlcorrespondingauthor{Tanveer Kaur}{tfnu@wpi.edu}
+\icmlkeywords{multimodal sentiment analysis, vision transformer, BERT, image-text fusion}
 
 \vskip 0.3in
 ]
@@ -88,55 +85,84 @@
 %\footnotetext{hi}
 
 \begin{abstract} 
-Describe {\bf briefly} the computational problem you tackled, the approach you explored, the analyses you performed, and the results you obtained.
-Point out advantages of your approach compared to prior approaches (if any).
+Image-Text Sentiment Analysis requires understanding emotional cues from multiple sources to determine an overall sentiment. In this project, we implement a multimodal sentiment classification model from scratch in PyTorch. The approach uses a Vision Transformer to encode vision features, and BERT to encode textual features. The encoded representations are positionally aligned and passed to a fusion module to extract a multimodal feature space. A fully connected layer with a softmax activation function acts as a prediction head to predict positive, negative, or neutral sentiment for the image-text pair.
 \end{abstract} 
 
 \section{Introduction}
-{\bf Problem before solution}:
-Begin by describing a (computational) {\bf problem} and why the problem is {\bf important}. If previous research has
-explored plausible solutions to solve the problem, then point out how these approaches may be lacking. Then briefly {\bf motivate}
-why a new approach (the approach you explore in this paper) is worth exploring. Don't go into too much detail yet how it works -- that will
-be left for Section \ref{sec:proposed_method}).
+Multimodal Sentiment Analysis (MSA) aims to bridge the gap between the separate aspects that make up our everyday conversations like tone, imagery, and context by integrating this type of information to produce a more accurate understanding of sentiment. In this project, we will focus on building a model capable of jointly analyzing images and text to predict sentiment labels (positive, neutral, negative). Our approach leverages a transformer-based architecture to learn shared representations between visual and textual modalities, allowing the model to capture the subtle cross-modal relationships that single-modal models often overlook.
 
-\subsection{Research contributions}
-Describe clearly and concisely what your paper {\bf uniquely} contributes to the research community, i.e., that has never been done before.
+To train and evaluate our model, we will use the MVSA-Multiple dataset \cite{niu2016sentiment}, which consists of approximately 19,600 annotated image–text pairs collected from Twitter, each labeled by three independent annotators.
+
+Building on the insights from prior work such as CTMWA \cite{zhang2024crossmodal}, we aim to implement our own MSA model from scratch. Rather than relying on pre-trained encoders, we will design and train each component ourselves. This approach will allow us to study how multimodal representations can be effectively learned without external pretraining and to evaluate whether such a model can achieve performance comparable to the baseline set by CTMWA at $\sim$74\% accuracy.
 
 \section{Related Work}
-Describe previous approaches (in somewhat greater detail than the introduction) to tackling the problem. Pick any citation style you prefer and use it
-consistently (here's a random citation \cite{mitchell80}). Explain how previous work may be lacking in certain ways, and use your critical review
-of prior work to further motivate your research.
+Image-Text Sentiment Analysis (ITSA) has become increasingly important as social media platforms are flooded posts that combine images and text to express emotion. Early approaches often relied on breaking down the image into objects or scenes using computer vision tools, then matching those objects to keywords in the text. While this worked okay, it was prone to errors---if the object detector missed something, the whole analysis could go wrong.
+
+More recently, the rise of Transformer models has changed the game. Instead of relying on separate, error-prone steps, these models can learn to understand both image and text simultaneously from raw pixels and words. One standout example is CLMLF, which uses contrastive learning to pull image and text features closer together if they express the same sentiment. These approaches are powerful because they capture the shared meaning between modalities. But here's the catch: they often miss the fact that sometimes, the real emotion comes from just one modality. A picture might be neutral, but the caption could be sarcastic. Or vice versa. The model needs to know which part of the puzzle matters most for each specific post.
+
+This is where the Crossmodal Translation-Based Meta Weight Adaption (CTMWA) model, introduced by Zhang et al.\ \cite{zhang2024crossmodal}, really stands out. Their approach doesn't just look for shared meaning; it also tries to figure out which modality---image or text---is doing the heavy lifting for each individual post. They do this in two clever ways. First, they build a ``translation'' network that can turn an image into a text-like representation, and vice versa. This helps the model handle situations where one modality is missing (like a post with only a picture). Second, and most importantly, they use meta-learning to train a special module that learns to assign weights to the image and text predictions. Think of it as the model asking itself, ``For this particular post, should I trust the image more, or the text?'' By training on a small set of manually annotated examples, this weight module learns to dynamically adjust its focus based on the situation.
+
+Recent work by Ren \cite{ren2024multimodal} has also explored multimodal sentiment analysis using BERT and ResNet architectures, demonstrating the effectiveness of combining transformer-based text encoders with convolutional image encoders. However, our approach differs by using Vision Transformers for both modalities, enabling a more unified architecture.
+
+In our project, we're starting by replicating the CTMWA model \cite{zhang2024crossmodal} as a benchmark. Our goal isn't to reinvent the wheel right away, but to first understand exactly how this state-of-the-art method works---from data preparation to training. Only by building a solid, reproducible baseline can we confidently design and test our own fusion transformer later on.
 
 \section{Proposed Method}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1.3\columnwidth]{architeture_diagram.png}
+    \caption{Overview of the proposed multimodal sentiment analysis architecture. The model encodes image and text inputs using Vision Transformer and BERT, respectively, then fuses the representations for sentiment classification.}
+    \label{fig:architecture}
+\end{figure}
 \label{sec:proposed_method}
-Describe the computational approach -- based obviously on neural networks -- that you took to tackle the problem.
+
+\subsection{Vision Encoder}
+The encoder is implemented using a Vision Transformer (ViT) architecture, which will process image patches as a sequence of tokens rather than using traditional convolutional operations. Each input image is first divided into fixed-sized patches, which are flattened and projected into the latent embeddings space using a learnable linear projection. Positional encodings are also added to retain spatial information, and the resulting sequence of embeddings is passed through a stack of transformer encoder layers. Each transformer layer consists of multi-head self-attention and feed-forward sublayers, both followed by residual connections and layer normalization. Through self-attention, the ViT model can create global dependencies between image regions, allowing it to capture context beyond the local texture patterns, which is particularly useful for our purposes where cues may arise from the contextual relationships found in the overall layout of the image rather than small-scale details. The output from the [CLS] token serves as the final visual embedding. Dropout and weight decay are applied for regularization. During training, gradients from the sentiment classification loss propagate back through both the fusion layers and the ViT encoder, enabling the model to learn patch representations.
+
+\subsection{Text Encoder}
+The text encoder is implemented using BERT architecture. BERT is a transformer-based language model that processes text bidirectionally, meaning it uses context from both the left and the right. It uses Masked Language Modeling (MLM) which works by hiding some of the words in a sentence and making BERT guess them, which helps the model learn how words relate to each other in context, and Next Sentence Prediction (NSP), which trains BERT to decide whether one sentence logically follows another, teaching it to understand the flow and structure of longer text, to learn robust semantic and syntactic representations that transfer effectively to downstream tasks such as sentiment analysis. We use the bert-base-uncased variant, which consists of 12 transformer encoder layers with a hidden size of 768. Input text is tokenized using BERT's WordPiece tokenizer with a maximum length of 128 tokens. The encoder outputs a contextual embedding sequence ([B, T, 768]) and a pooled [CLS] embedding representing the overall sentence meaning. To ensure compatibility with the 256-dimensional output of the Vision Transformer, we apply a linear projection layer that maps the 768-dimensional BERT sentence embedding into a 256-dimensional representation. A lightweight classification head then produces logits for the three sentiment categories (positive, neutral, negative). This setup enables seamless integration into our multimodal fusion model.
+
+\subsection{Fusion Transformer}
+The fusion transformer is responsible for modeling the relationship between the image and text. Often an image that could have a neutral tone may be heavily impacted by the image, or a sentence that could be perceived negatively might be sarcastic or a joke given an attached image. The implementation for our fusion transformer is inspired by an implementation from a `Topic-oriented Model' on GitHub. The fusion module in this case mirrors a transformer encoder block. The intuition behind using a multi-headed attention layer should help the network learn how parts of one modality matter for understanding the other, with a residual layer and normalization to stabilize training. The MLP adds some amount of non-linearity before going to the classification head. Finally, a fully connected layer takes the fused multimodal feature and passes it through to the final layer of size three, which represents the classification of positive, negative, or neutral.
 
 \section{Experiment}
-Describe the computational experiments you conducted to validate the approach you took.
+This section outlines the experimental design for our MVSA project, including the data preparation, model training strategy, and baseline comparisons. To reiterate, our primary objective is to assess whether a multimodal transformer-based model implemented entirely from scratch can achieve comparable performance to existing pre-trained architectures on the MVSA-Multiple dataset \cite{niu2016sentiment}.
+
+\subsection{Dataset}
+We use the MVSA-Multiple dataset for our experiments. This dataset consists of approximately 19,600 image-text pairs collected from Twitter, each labeled with a sentiment category (positive, neutral, or negative) by three independent annotators. Started off with the raw MVSA-Multiple dataset, our first major task was to organize the data. We wrote a script to segregate the mixed .jpg and .txt files into dedicated \texttt{images/} and \texttt{texts/} folders. Then we used a pre-trained CLIP-ViT-B/32 model to extract 512-dimensional features for every valid image and text pair.
+
+\subsection{Training Configuration}
+Our model jointly processes text and image inputs through both text and visual encoders, with a fusion mechanism integrating the modalities. Training is conducted using PyTorch at an initial learning rate of $2 \times 10^{-4}$, batch size of 32, and cross-entropy loss. Regularization techniques include dropout and weight decay. Random seeds are fixed during this experiment to ensure reproducibility.
+
+\subsection{Baseline Comparison}
+We use CTMWA \cite{zhang2024crossmodal} as a strong baseline for the model, as it is also designed to be used with this dataset and task in mind. To compare the results of both models we will use the same test split of MVSA-Multiple using accuracy and macro F1-score as the primary metrics. Additional analysis may include, if time allows, per-class precision, recall, and F1, as well as confusion matrices to help identify common misclassifications. This comparison allows us to quantify how close a from-scratch approach can come to a state-of-the-art pre-trained baseline and to understand the contribution of architectural design choices versus pretraining.
 
 \section{Results}
-Describe the results of the experiments, including their immediate implications (e.g., ``the result suggests that technique A performs better
-than technique B''). If your work is purely theoretical, then this section (as well as the previous section) might be replaced with mathematical proofs.
+Currently, we have the data loader working, which reads each sample’s image, text caption, and sentiment annotations from the MVSA folder, and then used PyTorch’s DataLoader to automatically batch, shuffle, and feed these paired text–image examples into our BERT and ViT encoders for testing. This also creates a conda env with the modules that we need, which will be useful for the future. Additionally, we have completed forward passes on both visual and text encoders using the MVSA dataset. The models load properly, the inputs have the correct shapes, the outputs have the right dimensions and there are no errors.
+
+Figure~\ref{fig:vit_out} shows the output tensor shape from the Vision Transformer (ViT) encoder, confirming correct processing of image inputs. Figure~\ref{fig:bert_out} displays the output tensor shape from the BERT encoder, verifying proper handling of text inputs.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1.0\columnwidth]{Vit_out.png}
+    \caption{Output tensor shape from the Vision Transformer (ViT) encoder on MVSA image samples.}
+    \label{fig:vit_out}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1.0\columnwidth]{BERT_out.png}
+    \caption{Output tensor shape from the BERT encoder on MVSA text samples.}
+    \label{fig:bert_out}
+\end{figure}
+
+
 
 \section{Discussion}
-Describe limitations of your work as well as further-ranging implications (e.g., ``our work suggests that doing XYZ in general may be a useful approach to...'').
-
-\section{Conclusions and Future Work}
-Briefly summarize the key findings your paper and point out interesting directions for future inquiry.
+Our work started with setting up the data and environment in WPI's Turing cluster environment. We implemented the Vision Transformer and BERT encoders and verified the forward passes on the MVSA dataset. Next steps involve integrating the fusion transformer module, adding the classification head, and finally training the complete model. While training the model we will monitor validation accuracy and loss to change hyperparmeters as needed to reduce overfitting and improve generalization. Once the model is trained, we will compare its performance against the CTMWA baseline and test our own image-text pairs outside the dataset to evaluate real-world applicability.
+% \section{Conclusions and Future Work}
+% Briefly summarize the key findings your paper and point out interesting directions for future inquiry.
 
 \bibliography{paper}
 \bibliographystyle{cs541}
 
-\end{document} 
-
-
-% This document was modified from the file originally made available by
-% Pat Langley and Andrea Danyluk for ICML-2K. This version was
-% created by Lise Getoor and Tobias Scheffer, it was slightly modified  
-% from the 2010 version by Thorsten Joachims & Johannes Fuernkranz, 
-% slightly modified from the 2009 version by Kiri Wagstaff and 
-% Sam Roweis's 2008 version, which is slightly modified from 
-% Prasad Tadepalli's 2007 version which is a lightly 
-% changed version of the previous year's version by Andrew Moore, 
-% which was in turn edited from those of Kristian Kersting and 
-% Codrina Lauth. Alex Smola contributed to the algorithmic style files.  
+\end{document}  
