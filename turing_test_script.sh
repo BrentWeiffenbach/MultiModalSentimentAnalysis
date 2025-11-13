@@ -20,4 +20,4 @@ source $(conda info --base)/etc/profile.d/conda.sh
 conda activate mmsa_env
 pip install -r requirements.txt
 
-python3 dataset_mvsa.py
+python3 src/dataset_mvsa.py

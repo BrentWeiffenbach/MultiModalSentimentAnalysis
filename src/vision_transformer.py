@@ -5,6 +5,8 @@ from typing import Tuple, Optional, Any
 import os
 from torch.utils.data import DataLoader
 from dataset_mvsa import MVSADataset
+from attention import Attention
+from mlp import MLP
 
 def _to_2tuple(x):
     if isinstance(x, tuple):
@@ -33,58 +35,6 @@ class PatchEmbed(nn.Module):
         assert (H, W) == self.img_size, f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
         x = self.proj(x)
         x = x.flatten(2).transpose(1, 2)
-
-        return x
-
-
-class MLP(nn.Module):
-    def __init__(self, in_features: int, hidden_features=None, out_features=None, dropout=0.0):
-        super().__init__()
-        out_features = out_features or in_features
-        hidden_features = hidden_features or in_features
-        self.fc1 = nn.Linear(in_features, hidden_features)
-        self.act = nn.ReLU()
-        self.fc2 = nn.Linear(hidden_features, out_features)
-        self.dropout = nn.Dropout(dropout) #dropout 
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.fc1(x)
-        x = self.act(x)
-        x = self.dropout(x) #dropout
-        x = self.fc2(x)
-        x = self.dropout(x) #dropout
-
-        return x
-
-
-class Attention(nn.Module):
-    def __init__(self, dim, num_heads=8, qkv_bias=True, attn_dropout=0.0, proj_dropout=0.0):
-        super().__init__()
-        assert dim % num_heads == 0, "dim must be divisible by num_heads"
-        self.num_heads = num_heads
-        self.head_dim = dim // num_heads
-        self.scale = self.head_dim ** -0.5
-
-        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
-        self.attn_drop = nn.Dropout(attn_dropout)
-        self.proj = nn.Linear(dim, dim)
-        self.proj_drop = nn.Dropout(proj_dropout)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        B, N, C = x.shape
-        qkv = self.qkv(x)
-        qkv = qkv.reshape(B, N, 3, self.num_heads, self.head_dim)
-        qkv = qkv.permute(2, 0, 3, 1, 4)
-        q, k, v = qkv[0], qkv[1], qkv[2]
-
-        attn = (q @ k.transpose(-2, -1)) * self.scale
-        attn = attn.softmax(dim=-1)
-        attn = self.attn_drop(attn)
-
-        x = (attn @ v)
-        x = x.transpose(1, 2).reshape(B, N, C)
-        x = self.proj(x)
-        x = self.proj_drop(x)
 
         return x
 

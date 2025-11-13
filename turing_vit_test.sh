@@ -16,4 +16,4 @@ module list
 
 source $(conda info --base)/etc/profile.d/conda.sh
 conda activate mmsa_env
-python3 encoder_V.py
+python3 src/vision_transformer.py
