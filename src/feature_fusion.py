@@ -5,7 +5,6 @@ from attention import Attention
 from mlp import MLP
 
 class FusionBlock(nn.Module):
-    """Transformer block with multi-head attention and MLP, both with residual connections and layer normalization."""
     def __init__(self, dim: int, num_heads: int = 8, mlp_ratio: float = 4.0, qkv_bias: bool = True, dropout: float = 0.0, attn_drop: float = 0.0):
         super().__init__()
         self.norm1 = nn.LayerNorm(dim)
@@ -23,9 +22,6 @@ class FusionBlock(nn.Module):
 
 
 class MultimodalFeatureFusion(nn.Module):
-    """
-    Multimodal feature fusion module that combines BERT text features and ViT vision features.
-    """
     def __init__(self,
                  bert_dim: int = 768,
                  vit_dim: int = 768,
