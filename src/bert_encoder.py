@@ -7,7 +7,6 @@ from dataset_mvsa import MVSADataset
 import os
 import torch.nn as nn
 from dataclasses import dataclass
-from transformers import BertTokenizer, BertModel
 from transformers import AutoTokenizer, AutoModel
 
 Device = torch.device
@@ -142,57 +141,48 @@ def main():
     labels_file = os.path.join(base_dir, "MVSA", "labelResultAll.txt")
 
     dataset = MVSADataset(data_dir, labels_file)
-    loader = DataLoader(dataset, batch_size=2, shuffle=False)
+
+    collator = TextCollator(model_name="bert-base-uncased")
+
+    loader = DataLoader(dataset, batch_size=2, shuffle=False, collate_fn=collator)
 
     print(f"Dataset size: {len(dataset)}")
 
-    # Load BERT components
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    model = BertModel.from_pretrained("bert-base-uncased").to(device)
+    model = BERTTextEncoder(
+        projection_dim=256,
+        num_classes=3
+    ).to(device)
+
     model.eval()
-
-    projection = torch.nn.Linear(768, 256).to(device)
-    classifier = torch.nn.Linear(256, 3).to(device)
-
-    print("BERT Text Encoder initialized successfully")
+    print("BERT model initialized successfully")
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
-     
+   
     with torch.no_grad():
         batch = next(iter(loader))
-        texts = batch["text"]
-        labels = batch["label"].to(device)
+        input_ids = batch.input_ids.to(device)
+        attention_mask = batch.attention_mask.to(device)
+        token_type_ids = (
+            batch.token_type_ids.to(device)
+            if batch.token_type_ids is not None else None
+        )
 
-        # print(f"\nSample texts: {texts[:2]}")
-
-        
-        enc = tokenizer(
-            texts,
-            padding=True,
-            truncation=True,
-            max_length=128,
-            return_tensors="pt"
-        ).to(device)
-
-        print(f"Input IDs shape: {enc['input_ids'].shape}")
-        print(f"Attention mask shape: {enc['attention_mask'].shape}")
+        # print(f"\nExample texts: {batch.texts[:2]}")
 
         
-        outputs = model(**enc)
-        pooled = outputs.pooler_output    
-        hidden_states = outputs.last_hidden_state   
+        sentence_repr, token_seq, logits = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids
+        )
 
-        print(f"Pooled output shape: {pooled.shape}")
-        print(f"Hidden state shape: {hidden_states.shape}")
+        print(f"Input IDs shape: {input_ids.shape}")
+        print(f"Attention mask shape: {attention_mask.shape}")
 
-       
-        proj = projection(pooled)
-        print(f"Projected embedding shape: {proj.shape}")
-
-        
-        logits = classifier(proj)
+        print(f"Token sequence shape: {token_seq.shape}")
+        print(f"Sentence representation shape: {sentence_repr.shape}")
         print(f"Logits shape: {logits.shape}")
-        print(f"Logits (sentiment predictions): {logits}")
+        print(f"Logits: {logits}")
 
         print("\n✓ BERT text encoder validated successfully on MVSA!")
 
