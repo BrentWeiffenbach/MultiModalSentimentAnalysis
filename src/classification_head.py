@@ -1,11 +1,10 @@
 import torch
 import torch.nn as nn
-from typing import Tuple, Optional, Any
 import os
 from torch.utils.data import DataLoader
 from dataset_mvsa import MVSADataset
-from VisionTransformer import VisionTransformer
-from bert_text_encoder import BertTextEncoder
+from vision_transformer import VisionTransformer
+from bert_encoder import BERTTextEncoder
 
 class ClassificationHead(nn.Module):
     """Classification head for output of multi-modal feature fusion."""
@@ -25,8 +24,10 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(base_dir, "MVSA", "data")
-    labels_file = os.path.join(base_dir, "MVSA", "labelResultAll.txt")
+    mvsa_dir = os.path.abspath(os.path.join(base_dir, "..", "MVSA"))
+    data_dir = os.path.join(mvsa_dir, "data")
+    labels_file = os.path.join(mvsa_dir, "labelResultAll.txt")
+
     
     dataset = MVSADataset(data_dir, labels_file)
     loader = DataLoader(dataset, batch_size=2, shuffle=False)
@@ -47,10 +48,7 @@ def main():
     print("ViT Model initialized successfully")
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
-    text_encoder = BertTextEncoder(
-        pretrained_model_name='bert-base-uncased',
-        output_dim=256
-    )
+    text_encoder = BERTTextEncoder()
     text_encoder.to(device)
     text_encoder.eval()
 

@@ -76,8 +76,10 @@ class MVSADataset(Dataset):
 
 if __name__ == "__main__":
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(base_dir, "MVSA", "data")
-    labels_file = os.path.join(base_dir, "MVSA", "labelResultAll.txt")
+    mvsa_dir = os.path.abspath(os.path.join(base_dir, "..", "MVSA"))
+    data_dir = os.path.join(mvsa_dir, "data")
+    labels_file = os.path.join(mvsa_dir, "labelResultAll.txt")
+
     dataset = MVSADataset(data_dir, labels_file)
     loader = DataLoader(dataset, batch_size=4, shuffle=True)
 
