@@ -19,5 +19,3 @@ conda create -y -n mmsa_env python=3.10.12
 source $(conda info --base)/etc/profile.d/conda.sh
 conda activate mmsa_env
 pip install -r requirements.txt
-
-python3 src/dataset_mvsa.py
