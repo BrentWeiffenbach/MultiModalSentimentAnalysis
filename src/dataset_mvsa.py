@@ -15,6 +15,8 @@ class MVSADataset(Dataset):
         
         # Read the labels file
         self.samples = []
+        invalid_count = 0
+        
         with open(labels_file, 'r', encoding='utf-8') as f:
             lines = f.readlines()[1:] 
             for line in lines:
@@ -41,38 +43,56 @@ class MVSADataset(Dataset):
                 if not (os.path.exists(img_path) and os.path.exists(text_path)):
                     continue
                 
-                self.samples.append((img_path, text_path, text_sentiments))
+                # Validate image can be opened
+                try:
+                    with Image.open(img_path) as img:
+                        img.verify()  # Verify it's a valid image
+                    # Re-open after verify (verify closes the file)
+                    with Image.open(img_path) as img:
+                        img.convert("RGB")  # Test conversion
+                    self.samples.append((img_path, text_path, text_sentiments))
+                except Exception as e:
+                    print(f"Skipping invalid image {sample_id}: {e}")
+                    invalid_count += 1
+                    continue
+        
+        print(f"Loaded {len(self.samples)} valid samples, skipped {invalid_count} invalid samples")
         
     def __len__(self):
         return len(self.samples)
     
     def __getitem__(self, idx):
-        img_path, text_path, text_sentiments = self.samples[idx]
+        try:
+            img_path, text_path, text_sentiments = self.samples[idx]
 
-        # Load image
-        image = Image.open(img_path).convert("RGB")
-        image = self.transform(image)
+            # Load image
+            image = Image.open(img_path).convert("RGB")
+            image = self.transform(image)
 
-        # Load text
-        with open(text_path, 'r', encoding='utf-8') as f:
-            text = f.read().strip()
+            # Load text
+            with open(text_path, 'r', encoding='utf-8') as f:
+                text = f.read().strip()
 
-        # Calculate percentage-based label from all annotators
-        # Count occurrences of each sentiment
-        positive_count = text_sentiments.count("positive")
-        neutral_count = text_sentiments.count("neutral")
-        negative_count = text_sentiments.count("negative")
-        total = len(text_sentiments)
-        
-        # Create label as percentages [positive, neutral, negative]
-        label = torch.tensor([
-            positive_count / total,
-            neutral_count / total,
-            negative_count / total
-        ], dtype=torch.float)
+            # Calculate percentage-based label from all annotators
+            # Count occurrences of each sentiment
+            positive_count = text_sentiments.count("positive")
+            neutral_count = text_sentiments.count("neutral")
+            negative_count = text_sentiments.count("negative")
+            total = len(text_sentiments)
+            
+            # Create label as percentages [positive, neutral, negative]
+            label = torch.tensor([
+                positive_count / total,
+                neutral_count / total,
+                negative_count / total
+            ], dtype=torch.float)
 
-        return {"image": image, "text": text, "label": label}
-
+            return {"image": image, "text": text, "label": label}
+            
+        except Exception as e:
+            print(f"Error loading sample {idx}: {e}")
+            # Try next sample
+            idx = (idx + 1) % len(self.samples)
 
 if __name__ == "__main__":
     base_dir = os.path.dirname(os.path.abspath(__file__))
