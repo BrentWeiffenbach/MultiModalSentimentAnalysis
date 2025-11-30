@@ -1,5 +1,6 @@
 import os
 import torch
+import matplotlib.pyplot as plt
 from torch.utils.data import Dataset
 from PIL import Image
 from torchvision import transforms
@@ -11,6 +12,7 @@ class MVSADataset(Dataset):
         self.transform = transform or transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
         
         # Read the labels file
@@ -21,18 +23,24 @@ class MVSADataset(Dataset):
             lines = f.readlines()[1:] 
             for line in lines:
                 parts = line.strip().split('\t')
-                if len(parts) < 4: 
+                # MVSA-Single has fewer columns, but ID is always first
+                if len(parts) < 2: 
                     continue
                 sample_id = parts[0].strip()
                 
-                # Extract text sentiment from all 3 annotators
-                text_sentiments = []
-                for i in range(1, 4):  # columns 1, 2, 3 (the 3 annotators)
-                    if ',' in parts[i]:
-                        text_sentiment = parts[i].split(',')[0].strip()  # Get text part
-                        text_sentiments.append(text_sentiment)
+                # Extract sentiments (text and image)
+                # MVSA-Single: ID, sentiment (column 1)
+                sentiments = []
                 
-                if len(text_sentiments) == 0:
+                # MVSA-Single format: ID \t sentiment
+                # sentiment is like "positive,neutral" (text, image)
+                if len(parts) > 1 and ',' in parts[1]:
+                    pair = parts[1].strip().split(',')
+                    if len(pair) >= 2:
+                        sentiments.append(pair[0].strip()) # Text sentiment
+                        sentiments.append(pair[1].strip()) # Image sentiment
+                
+                if len(sentiments) == 0:
                     continue
                 
                 img_path = os.path.join(root_dir, f"{sample_id}.jpg")
@@ -50,35 +58,40 @@ class MVSADataset(Dataset):
                     # Re-open after verify (verify closes the file)
                     with Image.open(img_path) as img:
                         img.convert("RGB")  # Test conversion
-                    self.samples.append((img_path, text_path, text_sentiments))
+                    self.samples.append((img_path, text_path, sentiments))
                 except Exception as e:
                     print(f"Skipping invalid image {sample_id}: {e}")
                     invalid_count += 1
                     continue
         
-        print(f"Loaded {len(self.samples)} valid samples, skipped {invalid_count} invalid samples")
+        print(f"Loaded {len(self.samples)} valid samples from {root_dir}, skipped {invalid_count} invalid samples")
         
     def __len__(self):
         return len(self.samples)
     
     def __getitem__(self, idx):
         try:
-            img_path, text_path, text_sentiments = self.samples[idx]
+            img_path, text_path, sentiments = self.samples[idx]
 
             # Load image
             image = Image.open(img_path).convert("RGB")
             image = self.transform(image)
 
             # Load text
-            with open(text_path, 'r', encoding='utf-8') as f:
-                text = f.read().strip()
+            # Try utf-8 first, then latin-1 if that fails
+            try:
+                with open(text_path, 'r', encoding='utf-8') as f:
+                    text = f.read().strip()
+            except UnicodeDecodeError:
+                with open(text_path, 'r', encoding='latin-1') as f:
+                    text = f.read().strip()
 
             # Calculate percentage-based label from all annotators
             # Count occurrences of each sentiment
-            positive_count = text_sentiments.count("positive")
-            neutral_count = text_sentiments.count("neutral")
-            negative_count = text_sentiments.count("negative")
-            total = len(text_sentiments)
+            positive_count = sentiments.count("positive")
+            neutral_count = sentiments.count("neutral")
+            negative_count = sentiments.count("negative")
+            total = len(sentiments)
             
             # Create label as percentages [positive, neutral, negative]
             label = torch.tensor([
@@ -93,18 +106,116 @@ class MVSADataset(Dataset):
             print(f"Error loading sample {idx}: {e}")
             # Try next sample
             idx = (idx + 1) % len(self.samples)
+            return self.__getitem__(idx)
 
 if __name__ == "__main__":
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    mvsa_dir = os.path.abspath(os.path.join(base_dir, "..", "MVSA"))
-    data_dir = os.path.join(mvsa_dir, "data")
-    labels_file = os.path.join(mvsa_dir, "labelResultAll.txt")
+    root_dir = os.path.abspath(os.path.join(base_dir, ".."))
+    
+    # Always load Single
+    single_dir = os.path.join(root_dir, "MVSA_Single")
+    data_dir = os.path.join(single_dir, "data")
+    labels_file = os.path.join(single_dir, "labelResultAll.txt")
+    
+    if os.path.exists(data_dir) and os.path.exists(labels_file):
+        print(f"Loading MVSA-Single from {data_dir}...")
+        dataset = MVSADataset(data_dir, labels_file)
+    else:
+        print(f"Error: MVSA-Single not found at {single_dir}")
+        exit(1)
 
-    dataset = MVSADataset(data_dir, labels_file)
+    print(f"Dataset size: {len(dataset)}")
+
+    # 1. Analyze Label Distribution (Fast method using cached metadata)
+    print("Analyzing label distribution...")
+    label_counts = {0: 0, 1: 0, 2: 0} # 0: Positive, 1: Neutral, 2: Negative
+    
+    all_samples = dataset.samples
+
+    for _, _, sentiments in all_samples:
+        positive_count = sentiments.count("positive")
+        neutral_count = sentiments.count("neutral")
+        negative_count = sentiments.count("negative")
+        total = len(sentiments)
+        
+        if total == 0:
+            continue
+        
+        # Calculate soft label
+        probs = [positive_count / total, neutral_count / total, negative_count / total]
+        # Determine dominant class
+        dominant_class = probs.index(max(probs))
+        label_counts[dominant_class] += 1
+
+    classes = ['Positive', 'Neutral', 'Negative']
+    counts = [label_counts[0], label_counts[1], label_counts[2]]
+    total_samples = sum(counts)
+    percentages = [c / total_samples * 100 for c in counts]
+
+    print("\nClass Distribution (Dominant Label):")
+    for cls, count, pct in zip(classes, counts, percentages):
+        print(f"{cls}: {count} ({pct:.2f}%)")
+
+    # Plot distribution
+    plt.figure(figsize=(8, 6))
+    bars = plt.bar(classes, counts, color=['green', 'gray', 'red'])
+    plt.title('Sentiment Class Distribution (MVSA-Single)')
+    plt.xlabel('Sentiment')
+    plt.ylabel('Count')
+    
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height,
+                f'{int(height)}\\n({height/total_samples*100:.1f}%)',
+                ha='center', va='bottom')
+                
+    plt.savefig('label_distribution_single.png')
+    print("Saved label_distribution_single.png")
+
+    # 2. Visualize Random Samples
+    print("\nVisualizing random samples...")
+    # Use a small batch size to get a few samples
     loader = DataLoader(dataset, batch_size=4, shuffle=True)
+    batch = next(iter(loader))
+    
+    images = batch['image']
+    texts = batch['text']
+    labels = batch['label']
 
-    for batch in loader:
-        print(batch["image"].shape)   # e.g. [4, 3, 224, 224]
-        print(batch["text"])          # list of 4 captions
-        print(batch["label"])         # [4, 3]
-        break
+    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+    axes = axes.flatten()
+
+    for i in range(4):
+        ax = axes[i]
+        # Image is [C, H, W], need [H, W, C]
+        img = images[i].permute(1, 2, 0).numpy()
+        
+        # Label info
+        label = labels[i]
+        label_str = f"Pos: {label[0]:.2f}, Neu: {label[1]:.2f}, Neg: {label[2]:.2f}"
+        dominant_idx = torch.argmax(label).item()
+        dominant = classes[dominant_idx] # type: ignore
+        
+        ax.imshow(img)
+        ax.set_title(f"Label: {dominant}\\n{label_str}", fontsize=10)
+        ax.axis('off')
+        
+        # Wrap text for display
+        text_content = texts[i]
+        # Simple wrapping
+        wrapped_text = ""
+        words = text_content.split()
+        line = ""
+        for word in words:
+            if len(line) + len(word) > 40:
+                wrapped_text += line + "\\n"
+                line = word + " "
+            else:
+                line += word + " "
+        wrapped_text += line
+        
+        ax.text(0.5, -0.05, wrapped_text, ha='center', va='top', transform=ax.transAxes, fontsize=9, wrap=True)
+
+    plt.tight_layout()
+    plt.savefig('sample_visualization_single.png')
+    print("Saved sample_visualization_single.png")
