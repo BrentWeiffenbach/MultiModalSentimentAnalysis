@@ -199,7 +199,10 @@ def main():
     patience_counter = 0
     
     # Setup output directory
-    output_dir = os.path.join("experiments", "final_training")
+    # Determine output directory name based on args
+    encoder_type = "huggingface" if use_huggingface else "custom"
+    freeze_type = "frozen" if freeze_encoders else "finetune"
+    output_dir = os.path.join("experiments", f"final_training_{encoder_type}_{freeze_type}")
     os.makedirs(output_dir, exist_ok=True)
     
     # Training Loop

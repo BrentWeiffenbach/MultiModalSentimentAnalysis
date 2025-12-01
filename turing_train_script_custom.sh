@@ -17,5 +17,5 @@ module load cuda
 source $(conda info --base)/etc/profile.d/conda.sh
 conda activate mmsa_env
 
-python train.py --batch-size 64 --pretrained-vit-path pretrained_encoders/mae_small/best_vit_encoder.pth \
+python train.py --batch-size 128 --pretrained-vit-path pretrained_encoders/mae_small/best_vit_encoder.pth \
   --pretrained-bert-path pretrained_encoders/bert_medium/best_bert_encoder.pth
