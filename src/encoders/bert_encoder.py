@@ -7,9 +7,9 @@ class BERTTextEncoder(nn.Module):
     def __init__(
         self,
         vocab_size: int = 30522,
-        hidden_size: int = 256,
-        num_layers: int = 4,
-        num_heads: int = 4,
+        hidden_size: int = 512,
+        num_layers: int = 6,
+        num_heads: int = 8,
         max_seq_length: int = 512,
         dropout: float = 0.1
     ):
