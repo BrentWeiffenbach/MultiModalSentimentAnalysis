@@ -12,7 +12,7 @@ class MVSADataset(Dataset):
         self.transform = transform or transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]), # Removed to match T4SA training
         ])
         
         # Read the labels file
@@ -93,14 +93,31 @@ class MVSADataset(Dataset):
             negative_count = sentiments.count("negative")
             total = len(sentiments)
             
-            # Create label as percentages [positive, neutral, negative]
-            label = torch.tensor([
-                positive_count / total,
+            # Create label as percentages [negative, neutral, positive] to match T4SA order (NEG, NEU, POS)
+            soft_label = torch.tensor([
+                negative_count / total,
                 neutral_count / total,
-                negative_count / total
+                positive_count / total
             ], dtype=torch.float)
+            
+            # Determine dominant class index
+            class_idx = torch.argmax(soft_label).item()
+            
+            # Helper to map string to index
+            label_map = {"negative": 0, "neutral": 1, "positive": 2}
+            # We assume sentiments list has [text_sentiment, image_sentiment] order from the parsing logic
+            # The parsing logic was: sentiments.append(pair[0]) (Text), sentiments.append(pair[1]) (Image)
+            text_label_idx = label_map.get(sentiments[0], -1)
+            image_label_idx = label_map.get(sentiments[1], -1)
 
-            return {"image": image, "text": text, "label": label}
+            return {
+                "image": image, 
+                "text": text, 
+                "label": class_idx, 
+                "soft_label": soft_label,
+                "text_label": text_label_idx,
+                "image_label": image_label_idx
+            }
             
         except Exception as e:
             print(f"Error loading sample {idx}: {e}")
