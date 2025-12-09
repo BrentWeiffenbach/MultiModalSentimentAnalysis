@@ -258,3 +258,9 @@ latex/
 .vscode/
 
 MVSA/
+MVSA_Single/
+
+experiments/
+pretrained_encoders/
+
+T4SA/

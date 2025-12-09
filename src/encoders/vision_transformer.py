@@ -2,11 +2,8 @@
 import torch
 import torch.nn as nn
 from typing import Tuple, Optional, Any
-import os
-from torch.utils.data import DataLoader
-from dataset_mvsa import MVSADataset
-from attention import Attention
-from mlp import MLP
+from src.common.attention import Attention
+from src.common.mlp import MLP
 
 def _to_2tuple(x):
     if isinstance(x, tuple):
@@ -61,9 +58,9 @@ class VisionTransformer(nn.Module):
                  patch_size: int = 16,
                  in_chans: int = 3,
                  num_classes: int = 1000,
-                 embed_dim: int = 768,
+                 embed_dim: int = 384,
                  depth: int = 12,
-                 num_heads: int = 12,
+                 num_heads: int = 6,
                  mlp_ratio: float = 4.0,
                  qkv_bias: bool = True,
                  representation_size = None,
@@ -162,56 +159,3 @@ class VisionTransformer(nn.Module):
             return proj, patch_sequence, logits
         else:
             return cls_rep, patch_sequence, logits
-        
-
-def main():
-    
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
-    
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    mvsa_dir = os.path.abspath(os.path.join(base_dir, "..", "MVSA"))
-    data_dir = os.path.join(mvsa_dir, "data")
-    labels_file = os.path.join(mvsa_dir, "labelResultAll.txt")
-    
-    dataset = MVSADataset(data_dir, labels_file)
-    loader = DataLoader(dataset, batch_size=2, shuffle=False)
-    
-    print(f"Dataset size: {len(dataset)}")
-    
-    model = VisionTransformer(
-        img_size=224,
-        patch_size=16,
-        in_chans=3,
-        num_classes=3,
-        embed_dim=768,
-        depth=4,
-        num_heads=8,
-        projection_dim=256
-    )
-    model.to(device)
-    model.eval()
-    
-    print("ViT Model initialized successfully")
-    print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
-    
-    # Test forward pass with batch from dataset
-    with torch.no_grad():
-        batch = next(iter(loader))
-        images = batch["image"].to(device)
-        
-        print(f"\nInput image shape: {images.shape}")
-        
-        proj, patches, logits = model(images, return_patch_sequence=True)
-        
-        print(f"Projection shape: {proj.shape}")
-        print(f"Patch sequence shape: {patches.shape}")
-        print(f"Logits shape: {logits.shape if logits is not None else 'None'}")
-        print(f"Logits (sentiment predictions): {logits}")
-        
-        print("\n✓ ViT architecture validated successfully!")
-
-if __name__ == "__main__":
-    main()
-
-
