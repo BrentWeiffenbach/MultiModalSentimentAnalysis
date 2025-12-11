@@ -1,10 +1,3 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%% ICML 2017 EXAMPLE LATEX SUBMISSION FILE %%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% Use the following line _only_ if you're still using LaTeX 2.09.
-%\documentstyle[cs541,epsf,natbib]{article}
-% If you rely on Latex2e packages, like most moden people use this:
 \documentclass{article}
 
 % use Times
@@ -43,6 +36,11 @@
 \twocolumn[
 \icmltitle{Multimodal Sentiment Analysis with Vision Transformers and BERT}
 
+\begin{center}
+Brent Weiffenbach \quad Mauricio Mergal \quad Jeffrey Li \quad Tanveer Kaur
+\end{center}
+\vspace{0.5em}
+]
 % It is OKAY to include author information, even for blind
 % submissions: the style file will automatically remove it for you
 % unless you've provided the [accepted] option to the icml2017
@@ -55,114 +53,178 @@
 
 % you can specify symbols, otherwise they are numbered in order
 
-\begin{icmlauthorlist}
-    \icmlauthor{Brent Weiffenbach}{wpi}
-    \icmlauthor{Mauricio Mergal}{wpi}
-    \icmlauthor{Jeffrey Li}{wpi}
-    \icmlauthor{Tanveer Kaur}{wpi}
-\end{icmlauthorlist}
-
-\icmlaffiliation{wpi}{Worcester Polytechnic Institute}
-\icmlcorrespondingauthor{Brent Weiffenbach}{rweiffenbach@wpi.edu}
-\icmlcorrespondingauthor{Mauricio Mergal}{mjmergal@wpi.edu}
-\icmlcorrespondingauthor{Jeffrey Li}{jcli@wpi.edu}
-\icmlcorrespondingauthor{Tanveer Kaur}{tfnu@wpi.edu}
-\icmlkeywords{multimodal sentiment analysis, vision transformer, BERT, image-text fusion}
-
-\vskip 0.3in
-]
-
-% this must go after the closing bracket ] following \twocolumn[ ...
-
-% This command actually creates the footnote in the first column
-% listing the affiliations and the copyright notice.
-% The command takes one argument, which is text to display at the start of the footnote.
-% The \icmlEqualContribution command is standard text for equal contribution.
-% Remove it (just {}) if you do not need this facility.
-
-\printAffiliationsAndNotice{}  % leave blank if no need to mention equal contribution
-%\printAffiliationsAndNotice{\icmlEqualContribution} % otherwise use the standard text.
-%\footnotetext{hi}
+% \begin{icmlauthorlist}  % Remove this line, not needed here
 
 \begin{abstract} 
-Image-Text Sentiment Analysis requires understanding emotional cues from multiple sources to determine an overall sentiment. In this project, we implement a multimodal sentiment classification model from scratch in PyTorch. The approach uses a Vision Transformer to encode vision features, and BERT to encode textual features. The encoded representations are positionally aligned and passed to a fusion module to extract a multimodal feature space. A fully connected layer with a softmax activation function acts as a prediction head to predict positive, negative, or neutral sentiment for the image-text pair.
+Image-Text Sentiment Analysis requires understanding emotional cues from
+multiple sources to determine an overall sentiment. In this project, we
+implement a multimodal sentiment classification model from scratch in PyTorch.
+The approach uses a Vision Transformer to encode vision features, and BERT to
+encode textual features. The encoded representations are positionally aligned
+and passed to a fusion module to extract a multimodal feature space. A fully
+connected layer with a softmax activation function acts as a prediction head to
+predict positive, negative, or neutral sentiment for the image-text pair.
 \end{abstract} 
 
 \section{Introduction}
 Multimodal Sentiment Analysis (MSA) aims to bridge the gap between the separate aspects that make up our everyday conversations like tone, imagery, and context by integrating this type of information to produce a more accurate understanding of sentiment. In this project, we will focus on building a model capable of jointly analyzing images and text to predict sentiment labels (positive, neutral, negative). Our approach leverages a transformer-based architecture to learn shared representations between visual and textual modalities, allowing the model to capture the subtle cross-modal relationships that single-modal models often overlook.
-
-To train and evaluate our model, we will use the MVSA-Multiple dataset \cite{niu2016sentiment}, which consists of approximately 19,600 annotated image–text pairs collected from Twitter, each labeled by three independent annotators.
-
-Building on the insights from prior work such as CTMWA \cite{zhang2024crossmodal}, we aim to implement our own MSA model from scratch. Rather than relying on pre-trained encoders, we will design and train each component ourselves. This approach will allow us to study how multimodal representations can be effectively learned without external pretraining and to evaluate whether such a model can achieve performance comparable to the baseline set by CTMWA at $\sim$74\% accuracy.
+We initially planned to train and evaluate our model using the MVSA-Multiple dataset, which contains approximately 19,600 image–text pairs annotated by three independent raters. However, due to practical constraints, we ultimately shifted to primarily using T4SA dataset along with the MVSA-Single, both of which provide sufficiently large and well-annotated multimodal samples for supervised training.
+Building on prior work such as CTMWA and TOM, our goal is to implement an MSA model entirely from scratch. This design choice allows us to investigate how multimodal representations can be learned end-to-end and to assess whether such a model can approach the baseline accuracy of approximately 74\% reported for CTMWA.
 
 \section{Related Work}
-Image-Text Sentiment Analysis (ITSA) has become increasingly important as social media platforms are flooded posts that combine images and text to express emotion. Early approaches often relied on breaking down the image into objects or scenes using computer vision tools, then matching those objects to keywords in the text. While this worked okay, it was prone to errors---if the object detector missed something, the whole analysis could go wrong.
 
-More recently, the rise of Transformer models has changed the game. Instead of relying on separate, error-prone steps, these models can learn to understand both image and text simultaneously from raw pixels and words. One standout example is CLMLF, which uses contrastive learning to pull image and text features closer together if they express the same sentiment. These approaches are powerful because they capture the shared meaning between modalities. But here's the catch: they often miss the fact that sometimes, the real emotion comes from just one modality. A picture might be neutral, but the caption could be sarcastic. Or vice versa. The model needs to know which part of the puzzle matters most for each specific post.
-
-This is where the Crossmodal Translation-Based Meta Weight Adaption (CTMWA) model, introduced by Zhang et al.\ \cite{zhang2024crossmodal}, really stands out. Their approach doesn't just look for shared meaning; it also tries to figure out which modality---image or text---is doing the heavy lifting for each individual post. They do this in two clever ways. First, they build a ``translation'' network that can turn an image into a text-like representation, and vice versa. This helps the model handle situations where one modality is missing (like a post with only a picture). Second, and most importantly, they use meta-learning to train a special module that learns to assign weights to the image and text predictions. Think of it as the model asking itself, ``For this particular post, should I trust the image more, or the text?'' By training on a small set of manually annotated examples, this weight module learns to dynamically adjust its focus based on the situation.
-
-Recent work by Ren \cite{ren2024multimodal} has also explored multimodal sentiment analysis using BERT and ResNet architectures, demonstrating the effectiveness of combining transformer-based text encoders with convolutional image encoders. However, our approach differs by using Vision Transformers for both modalities, enabling a more unified architecture.
-
-In our project, we're starting by replicating the CTMWA model \cite{zhang2024crossmodal} as a benchmark. Our goal isn't to reinvent the wheel right away, but to first understand exactly how this state-of-the-art method works---from data preparation to training. Only by building a solid, reproducible baseline can we confidently design and test our own fusion transformer later on.
-
+\subsection{CTMWA}
+The Crossmodal Translation-Based Meta Weight Adaption (CTMWA) model advances Image-Text Sentiment Analysis by tackling two key challenges: capturing both shared (modality-invariant) and unique (modality-independent) emotional cues, and ensuring robustness when one modality is missing.
+CTMWA’s first core component is a Crossmodal Translation Network, which learns to translate text features into an image-like space and image features into a text-like space. This not only helps the model capture shared semantics but also enables it to reconstruct a missing modality.
+The second innovation is the Unimodal Weight Adaption (UWA) strategy, which dynamically adjusts the importance of text versus vision for each input during training. Using a meta-learning approach, CTMWA trains a small weight-generation network on a curated meta set (128 instances per dataset) with manually annotated unimodal labels (text-only and image-only sentiment). This allows the model to adaptively emphasize the more reliable modality - for instance, trusting text in sarcastic posts or images in cases with strong visual emotion - leading to more accurate and context-aware predictions.
+Evaluated on three benchmarks, CTMWA achieved state-of-the-art results: 73.34\% on MVSA-Single, 74.02\% on MVSA-Multiple, and 75.75\% on the fine-grained TumEmo dataset.
+\subsection{TOM}
+Weakly Correlated Multimodal Sentiment Analysis: One New Dataset and One Topic-oriented Model is a model focused on predicting sentiment labels for their own collected dataset, RU-Senti, which contains all data samples related to the Russia-Ukraine conflict. This model proposes a transformer focused approach to focus on weakly correlated samples. This approach uses pretrained ViT and BERT modules, with their novel topic-oriented feature alignment, with a multimodal feature fusion module and classification head to predict sentiment of image-text pairs. TOM is able to learn topic information from the text and use that to extract information from images semantically related to the text. The goal is to align the two modalities before feature fusion and sentiment prediction. This model achieves 75.32\% accuracy on the MVSA dataset, and 85.44\% on their own RU-Senti dataset~\cite{10517619,ren2024multimodal}.
+Other relevant work includes sentiment analysis on multi-view social data \cite{niu2016sentiment} and recent advances in multimodal sentiment analysis using BERT and ResNet \cite{ren2024multimodal}.
 \section{Proposed Method}
-\begin{figure}[ht]
-    \centering
-    \includegraphics[width=1.3\columnwidth]{architeture_diagram.png}
-    \caption{Overview of the proposed multimodal sentiment analysis architecture. The model encodes image and text inputs using Vision Transformer and BERT, respectively, then fuses the representations for sentiment classification.}
-    \label{fig:architecture}
-\end{figure}
-\label{sec:proposed_method}
+\subsection{ViT}
+The visual encoder is responsible for transforming raw image data into high-level semantic representations relevant to sentiment, such as color, facial expression, and compositional cues. We implement this as a Vision Transformer (ViT), which models an image as a sequence of patch tokens rather than relying on convolutional filters. Each image is divided into fixed-size patches, 16 x 16 pixels, flattened, and projected into a latent embedding space through a learnable linear projection. Positional encodings and a learnable classification (CLS) token are added to the sequence, which is then processed by the stack of Transformer encoder layers.
+Each Transformer layer consists of multi-headed self-attention and a feed-forward network with residual connections and layer normalization. This architecture enables the model to capture global contextual relationships across the entire image, allowing it to detect sentiment cues that emerge from broader spatial structure rather than small-scale details. The final visual embedding is taken from the CLS token output. Dropout and weight decay are applied throughout the encoder for regularization, and all parameters are updated end-to-end using gradients from the downstream sentiment classification objective.
+Prior to downstream training, the ViT encoder is pretrained using a Masked Autoencoder (MAE) to improve generalization and stability. During MAE pretraining, approximately 75\% of patch images are randomly masked. Only the remaining visible patches are passed through the ViT, while learned mask tokens are injected later and combined with encoder outputs. A lightweight decoder then attempts to reconstruct the missing patches.
+The model is trained using mean squared error computed solely on masked patches. This encourages the encoder to learn robust and generalizable representations of image structure. Gradients are propagated through both the encoder and decoder during this stage. After pretraining, the decoder is discarded and the pretrained encoder weights are retained for integration into the multimodal sentiment analysis model.
 
-\subsection{Vision Encoder}
-The encoder is implemented using a Vision Transformer (ViT) architecture, which will process image patches as a sequence of tokens rather than using traditional convolutional operations. Each input image is first divided into fixed-sized patches, which are flattened and projected into the latent embeddings space using a learnable linear projection. Positional encodings are also added to retain spatial information, and the resulting sequence of embeddings is passed through a stack of transformer encoder layers. Each transformer layer consists of multi-head self-attention and feed-forward sublayers, both followed by residual connections and layer normalization. Through self-attention, the ViT model can create global dependencies between image regions, allowing it to capture context beyond the local texture patterns, which is particularly useful for our purposes where cues may arise from the contextual relationships found in the overall layout of the image rather than small-scale details. The output from the [CLS] token serves as the final visual embedding. Dropout and weight decay are applied for regularization. During training, gradients from the sentiment classification loss propagate back through both the fusion layers and the ViT encoder, enabling the model to learn patch representations.
+\subsection{BERT}
+The text encoder is implemented using the BERT architecture. BERT is a transformer-based language model that processes text bidirectionally, meaning it uses context from both the left and the right. It uses Masked Language Modeling (MLM) which works by hiding some of the words in a sentence and making BERT guess them, which helps the model learn how words relate to each other in context, and Next Sentence Prediction (NSP), which trains BERT to decide whether one sentence logically follows another.
+In our project, we implemented a simplified “mini” BERT encoder with fewer layers and smaller hidden dimensions. Our encoder starts with token embeddings, where each word ID is mapped to a 256-dimensional vector. We also add position and token embeddings so the model is aware of the positioning and order of the words in the sentence. After embeddings, the input passes through four Transformer encoder layers. Each layer contains multi-head self-attention which lets every word attend to every other word in the sentence, and a feed-forward network that transforms that representation, followed by layer normalization with residual connections. At the end, we use CLS pooling, where the first token of the sequence is used as the overall sentence representation.
+Masked language modeling (MLM) is used in order to learn proper representations. During training, about fifteen percent of the tokens in a sentence are replaced with a mask symbol. The model’s job is to predict the original words that were replaced. The hidden states produced by our BERT encoder are first passed through a dense layer, followed by a GeLU activation and LayerNorm. Then, a final linear decoder maps each hidden state to a probability distribution over the entire vocabulary. We also use weight tying, which reduces parameters, overfitting and keeps word representations consistent. The loss function is the standard cross-entropy loss. When computing the loss, only the masked positions are significant, as all other unmasked tokens receive a label of -100.  
 
-\subsection{Text Encoder}
-The text encoder is implemented using BERT architecture. BERT is a transformer-based language model that processes text bidirectionally, meaning it uses context from both the left and the right. It uses Masked Language Modeling (MLM) which works by hiding some of the words in a sentence and making BERT guess them, which helps the model learn how words relate to each other in context, and Next Sentence Prediction (NSP), which trains BERT to decide whether one sentence logically follows another, teaching it to understand the flow and structure of longer text, to learn robust semantic and syntactic representations that transfer effectively to downstream tasks such as sentiment analysis. We use the bert-base-uncased variant, which consists of 12 transformer encoder layers with a hidden size of 768. Input text is tokenized using BERT's WordPiece tokenizer with a maximum length of 128 tokens. The encoder outputs a contextual embedding sequence ([B, T, 768]) and a pooled [CLS] embedding representing the overall sentence meaning. To ensure compatibility with the 256-dimensional output of the Vision Transformer, we apply a linear projection layer that maps the 768-dimensional BERT sentence embedding into a 256-dimensional representation. A lightweight classification head then produces logits for the three sentiment categories (positive, neutral, negative). This setup enables seamless integration into our multimodal fusion model.
-
-\subsection{Fusion Transformer}
-The fusion transformer is responsible for modeling the relationship between the image and text. Often an image that could have a neutral tone may be heavily impacted by the image, or a sentence that could be perceived negatively might be sarcastic or a joke given an attached image. The implementation for our fusion transformer is inspired by an implementation from a `Topic-oriented Model' on GitHub. The fusion module in this case mirrors a transformer encoder block. The intuition behind using a multi-headed attention layer should help the network learn how parts of one modality matter for understanding the other, with a residual layer and normalization to stabilize training. The MLP adds some amount of non-linearity before going to the classification head. Finally, a fully connected layer takes the fused multimodal feature and passes it through to the final layer of size three, which represents the classification of positive, negative, or neutral.
+\subsection{Fusion and Classification}
+Our multimodal sentiment analysis framework employs a structured pipeline where features from separate visual and textual encoders are fused and classified to produce the final sentiment prediction. The fusion and classification stages are designed to be efficient and effective, leveraging the powerful representational capabilities of the Transformer architecture.
+The Fusion Module is implemented as a dedicated MultimodalFeatureFusion class. It receives as input the full sequence of feature vectors from the Vision Transformer (ViT) encoder, which represents the individual patches of the input image, and the full sequence of feature vectors from the BERT encoder, which represents the tokens of the input text. These two sequences, which may have different lengths and feature dimensions, are first projected independently into a common \texttt{fusion\_dim} space using linear layers. The projected sequences are then concatenated along the sequence dimension to form a single, unified sequence that contains all information from both modalities. This concatenated sequence is then processed through a series of standard Transformer encoder blocks. Each block consists of a Multi-Head Self-Attention (MHSA) layer followed by a Multi-Layer Perceptron (MLP). The MHSA mechanism is the core of this fusion process, as it allows every element in the combined sequence - whether it originated from the image or the text - to attend to every other element. This global, dense interaction enables the model to learn complex, contextual dependencies and relationships between the visual and textual content, effectively creating a rich, joint multimodal representation. The output of this Transformer stack is a new sequence of the same length, where each element’s representation has been updated based on its interactions with all other elements in the sequence.
+To prepare this fused representation for the final classification step, a simple yet effective pooling strategy is applied. The entire fused sequence is reduced to a single, fixed-size vector by taking the mean (average) across the sequence dimension. This pooled vector, which encapsulates the globally-interacted, multimodal understanding of the input, serves as the final input to the classification head.
+The Classification Head is a lightweight module implemented as a ClassificationHead class. It consists of a dropout layer for regularization, followed by a single linear layer. This linear layer maps the dimension of the pooled fused vector directly to the number of output classes (three, for positive, neutral, and negative sentiment). The output of this linear layer is a vector of raw scores, or logits, for each sentiment class. These logits are then passed through a standard cross-entropy loss function during training to compute the final prediction loss. This simple two-component structure (dropout + linear layer) provides a direct and efficient pathway from the complex, fused representation to a concrete sentiment prediction, completing the model's forward pass.
+This design - using a Transformer-based fusion to enable rich cross-modal interaction followed by mean pooling and a simple linear classifier - provides a robust and scalable foundation for multimodal sentiment analysis, balancing representational power with architectural simplicity.
 
 \section{Experiment}
-This section outlines the experimental design for our MVSA project, including the data preparation, model training strategy, and baseline comparisons. To reiterate, our primary objective is to assess whether a multimodal transformer-based model implemented entirely from scratch can achieve comparable performance to existing pre-trained architectures on the MVSA-Multiple dataset \cite{niu2016sentiment}.
-
-\subsection{Dataset}
-We use the MVSA-Multiple dataset for our experiments. This dataset consists of approximately 19,600 image-text pairs collected from Twitter, each labeled with a sentiment category (positive, neutral, or negative) by three independent annotators. Started off with the raw MVSA-Multiple dataset, our first major task was to organize the data. We wrote a script to segregate the mixed .jpg and .txt files into dedicated \texttt{images/} and \texttt{texts/} folders. Then we used a pre-trained CLIP-ViT-B/32 model to extract 512-dimensional features for every valid image and text pair.
-
-\subsection{Training Configuration}
-Our model jointly processes text and image inputs through both text and visual encoders, with a fusion mechanism integrating the modalities. Training is conducted using PyTorch at an initial learning rate of $2 \times 10^{-4}$, batch size of 32, and cross-entropy loss. Regularization techniques include dropout and weight decay. Random seeds are fixed during this experiment to ensure reproducibility.
-
-\subsection{Baseline Comparison}
-We use CTMWA \cite{zhang2024crossmodal} as a strong baseline for the model, as it is also designed to be used with this dataset and task in mind. To compare the results of both models we will use the same test split of MVSA-Multiple using accuracy and macro F1-score as the primary metrics. Additional analysis may include, if time allows, per-class precision, recall, and F1, as well as confusion matrices to help identify common misclassifications. This comparison allows us to quantify how close a from-scratch approach can come to a state-of-the-art pre-trained baseline and to understand the contribution of architectural design choices versus pretraining.
-
+Our team designed experiments to determine the best techniques and setups to use with the raw pytorch implementation. The first experiment was to verify if our architecture can learn and theoretically get reasonable results by using Hugging Face pretrained ViT and BERT modules fed into our fusion module and classification head trained on the T4SA dataset. Once the fusion module and classification head were verified, the goal is to replace the Hugging Face modules with our own pytorch implementation. Pretraining the BERT and VIT modules using the T4SA dataset helps us get good feature representations for the downstream tasks to use for sentiment analysis. During these experiments we try changing embedding dimension sizes to implement smaller versions of the standard models. Finally, we have our own custom encoder implementations that have been pretrained on a large amount of data, a fusion module, and classification head ready to be fully trained on the final dataset. We train with the encoders frozen and available to finetune to compare final results. With the completed trained model, we can test the model on other datasets like MVSA-Single and compare accuracy.
 \section{Results}
-Currently, we have the data loader working, which reads each sample’s image, text caption, and sentiment annotations from the MVSA folder, and then used PyTorch’s DataLoader to automatically batch, shuffle, and feed these paired text–image examples into our BERT and ViT encoders for testing. This also creates a conda env with the modules that we need, which will be useful for the future. Additionally, we have completed forward passes on both visual and text encoders using the MVSA dataset. The models load properly, the inputs have the correct shapes, the outputs have the right dimensions and there are no errors.
 
-Figure~\ref{fig:vit_out} shows the output tensor shape from the Vision Transformer (ViT) encoder, confirming correct processing of image inputs. Figure~\ref{fig:bert_out} displays the output tensor shape from the BERT encoder, verifying proper handling of text inputs.
+Initially, the custom PyTorch implementation was trained on the full dataset without pretraining. Validation loss exploded and accuracy was unstable, showing that training from scratch on a small dataset was ineffective (see Appendix~\ref{appendix:pretrain}).
 
-\begin{figure}[ht]
-    \centering
-    \includegraphics[width=1.0\columnwidth]{Vit_out.png}
-    \caption{Output tensor shape from the Vision Transformer (ViT) encoder on MVSA image samples.}
-    \label{fig:vit_out}
+After verifying the architecture, we ran full online training with early stopping (patience 5). Both models stopped improving after about 10 epochs, regardless of encoder freezing. Figure~\ref{fig:full_train_frozen} shows the frozen encoder case, reaching about 94\% accuracy after 13 epochs.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.8\columnwidth]{final_graphs/online_frozen_t4sa.png}
+	\caption{Training and validation accuracy for full training with frozen encoders.}
+	\label{fig:full_train_frozen}
 \end{figure}
 
-\begin{figure}[ht]
-    \centering
-    \includegraphics[width=1.0\columnwidth]{BERT_out.png}
-    \caption{Output tensor shape from the BERT encoder on MVSA text samples.}
-    \label{fig:bert_out}
+With finetuned encoders, training is less stable but validation accuracy is higher (about 97.5\%), as shown in Figure~\ref{fig:full_train_finetune}.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.8\columnwidth]{final_graphs/online_finetune_t4sa.png}
+	\caption{Training and validation accuracy for full training with finetuned encoders.}
+	\label{fig:full_train_finetune}
 \end{figure}
 
+With pretrained encoders, we repeated full training (LR=5e-05, BS=64, Dropout=0.1, early stopping). Frozen encoders gave stable training and 94.65\% accuracy; finetuning was less stable but reached 97.66\% after 7 epochs (see Figure~\ref{fig:custom_full_frozen} and Figure~\ref{fig:custom_full_finetune}).
 
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.8\columnwidth]{final_graphs/custom_full_frozen.png}
+	\caption{Training and validation accuracy for full training with custom PyTorch encoders frozen.}
+	\label{fig:custom_full_frozen}
+\end{figure}
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.8\columnwidth]{final_graphs/custom_full_finetune.png}
+	\caption{Training and validation accuracy for full training with custom PyTorch encoders unfrozen.}
+	\label{fig:custom_full_finetune}
+\end{figure}
+
+On MVSA-Single, the model achieved 56.89\% test accuracy (61.46\% for consistent samples, 51.69\% for inconsistent). Accuracy vs text label: 61.74\%; vs image label: 41.34\%. The model predicts text sentiment better, likely due to dataset label structure. See Appendix~\ref{appendix:mvsa} for more results and examples.
 
 \section{Discussion}
-Our work started with setting up the data and environment in WPI's Turing cluster environment. We implemented the Vision Transformer and BERT encoders and verified the forward passes on the MVSA dataset. Next steps involve integrating the fusion transformer module, adding the classification head, and finally training the complete model. While training the model we will monitor validation accuracy and loss to change hyperparmeters as needed to reduce overfitting and improve generalization. Once the model is trained, we will compare its performance against the CTMWA baseline and test our own image-text pairs outside the dataset to evaluate real-world applicability.
-% \section{Conclusions and Future Work}
-% Briefly summarize the key findings your paper and point out interesting directions for future inquiry.
 
+This project set out to investigate whether a multimodal sentiment analysis architecture could be trained entirely from scratch, using custom PyTorch implementations of BERT and ViT, while still approaching the performance of systems built on pretrained encoders. The progression of experiments provides several clear lessons about model design, the role of pretraining, and the practical challenges of multimodal learning.
+A key takeaway is that training a full multimodal transformer from scratch was not feasible on our datasets. Using uninitialized encoders for both modalities led to unstable optimization, exploding validation loss, and no meaningful learning signal. This confirmed that the complexity of modern vision and language architectures far exceeds what can be learned from MVSA or T4SA alone without strong initialization. 
+A second lesson appeared when comparing frozen and fine-tuned encoders. Across both the pretrained Hugging Face models and our custom-pretrained models, frozen encoders produced more stable learning curves, while fine-tuning significantly increased the validation instability within the large networks. However, we did find that fine-tuning consistently offered a small but meaningful accuracy benefit (e.g., from ~94\% to ~97.5\% with Hugging Face models and from ~95.45\% to ~96.12\% with our own encoders). This highlights a core trade-off within multimodal systems: fine-tuning improves performance but destabilizes optimization, which in turn requires careful scheduling and regularization.
+Thirdly, the experiments with MAE-pretrained ViT and MLM-pretrained BERT demonstrated that even smaller, simplified transformer encoders can learn useful feature representations when given appropriate pretraining objectives. Both pretraining procedures showed stable decreases in training and validation loss, indicating successful learning of generalizable representations. However, despite the success of our custom pretraining, the encoders still underperformed relative to the powerful pretrained Hugging Face counterpart - an expected outcome given their significantly smaller size and the limited scale of our pretraining datasets.
+Finally, qualitative testing on our own real-world examples demonstrated that the model can still make coherent multimodal predictions outside the training distribution, offering some evidence that the learned fusion module generalizes in a practical sense, even if the dataset transfer remains limited.
+Overall, this does raise several broader questions. How large must a dataset be to train a full multimodal transformer end-to-end from scratch? Could other pretraining methods (like contrastive) produce stronger shared visual and text representations than reconstruction based objectives like MAE and MLM? 
+
+
+\section{Conclusions and Future Work}
+
+Multimodal Sentiment Analysis remains a challenging problem, and our work highlights several limitations that future research should continue to address. First, transformer-based encoders such as BERT and ViT require large amounts of pretraining data to learn strong representations, and smaller datasets can often limit their effectiveness. This is especially true for larger encoders, which tend to overfit and struggle to capture meaningful patterns when training data is scarce or homogeneous. The quality, diversity, and distribution of the dataset also play a critical role, as imbalanced or noisy samples can greatly affect model performance. Furthermore, generalizing to new domains or datasets remains difficult, as models often learn specific patterns that do not transfer well. Finally, sentiment itself can be inherently subjective and ambiguous; even humans frequently disagree on labels. Future work should potentially explore stronger pretraining strategies, more robust fusion mechanisms, and the collection of larger and more diverse multimodal datasets to better capture the complexity of human sentiment.
+
+\clearpage
 \bibliography{paper}
 \bibliographystyle{cs541}
+
+\clearpage
+\appendix
+\section{Initial Architecture Experiments and Pretraining Results}
+\label{appendix:pretrain}
+
+To verify our architecture we first do a short experiment with Hugging Face encoders 'bert-base-uncased' and 'google/vit-base-patch16-224' with our custom pytorch fusion module and classification heads. Figure~\ref{fig:hf_no_fusion} shows the hugging face models with only a classification head and without the fusion module. The model learns for 10 epochs and gets to a reasonable ~75\% accuracy.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\columnwidth]{final_graphs/online_concat_experiment.png}
+	\caption{Training accuracy for Hugging Face encoders with classification head only.}
+	\label{fig:hf_no_fusion}
+\end{figure}
+
+Then we implement the fusion module with the hugging face encoders and classification head to get Figure~\ref{fig:hf_with_fusion}. This model immediately achieves higher accuracy after a small number of epochs, verifying the need for the fusion module to increase our accuracy.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\columnwidth]{final_graphs/online_fusion_experiment.png}
+	\caption{Training accuracy for Hugging Face encoders with fusion module.}
+	\label{fig:hf_with_fusion}
+\end{figure}
+
+Now that the architecture has achieved great accuracy with existing encoders, it's time to implement our own custom pytorch BERT and ViT. First, we can pretrain the ViT encoder with a strategy called Masked Autoencoder reconstruction to get weights for the encoder that output good feature representations. Figure~\ref{fig:vit_pretrain_loss} shows validation and training loss decreasing, evidently suggesting that the model is learning and achieves a good feature representation.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\columnwidth]{final_graphs/mae_training_metrics.png}
+	\caption{Training and validation loss for ViT encoder pretraining (Masked Autoencoder).}
+	\label{fig:vit_pretrain_loss}
+\end{figure}
+
+The text autoencoder, BERT, also needs to be pretrained to get good text features from the data. To do this, we use the masked language modeling pretraining technique which randomly masks some input tokens (about 15\%) and the model must predict the original masked tokens. Figure~\ref{fig:bert_pretrain_loss} shows training and validation loss decreasing over epochs which implies the model has learned good text features.
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\columnwidth]{final_graphs/bert_training_metrics.png}
+	\caption{Training and validation loss for BERT encoder pretraining (Masked Language Modeling).}
+	\label{fig:bert_pretrain_loss}
+\end{figure}
+\clearpage
+\section{Additional Results}
+\label{appendix:mvsa}
+
+\subsection{MVSA-Single Test Results}
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\columnwidth]{mvsa_results.png}
+	\caption{Test accuracy results for MVSA-Single dataset.}
+	\label{fig:mvsa_single_results}
+\end{figure}
+
+\subsection{Model Predictions for Team Images}
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\columnwidth]{result_happy.png}
+	\caption{Model prediction for positive tweet about the project.}
+	\label{fig:team_positive}
+\end{figure}
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.9\columnwidth]{result_sad.png}
+	\caption{Model prediction for negative tweet about the project.}
+	\label{fig:team_negative}
+\end{figure}
 
 \end{document}  

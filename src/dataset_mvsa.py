@@ -194,43 +194,41 @@ if __name__ == "__main__":
     # Use a small batch size to get a few samples
     loader = DataLoader(dataset, batch_size=4, shuffle=True)
     batch = next(iter(loader))
-    
+
     images = batch['image']
     texts = batch['text']
-    labels = batch['label']
+    soft_labels = batch['soft_label']  # Use soft_label for probabilities
+    labels = batch['label']            # Use label for dominant class index
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
     axes = axes.flatten()
 
     for i in range(4):
         ax = axes[i]
-        # Image is [C, H, W], need [H, W, C]
         img = images[i].permute(1, 2, 0).numpy()
-        
-        # Label info
-        label = labels[i]
-        label_str = f"Pos: {label[0]:.2f}, Neu: {label[1]:.2f}, Neg: {label[2]:.2f}"
-        dominant_idx = torch.argmax(label).item()
-        dominant = classes[dominant_idx] # type: ignore
-        
+        # Use soft_label for probabilities
+        label_probs = soft_labels[i]
+        label_str = f"Pos: {label_probs[2]:.2f}, Neu: {label_probs[1]:.2f}, Neg: {label_probs[0]:.2f}"
+        dominant_idx = labels[i].item() if hasattr(labels[i], 'item') else int(labels[i])
+        dominant = classes[dominant_idx]
+
         ax.imshow(img)
-        ax.set_title(f"Label: {dominant}\\n{label_str}", fontsize=10)
+        ax.set_title(f"Label: {dominant}\n{label_str}", fontsize=10)
         ax.axis('off')
-        
+
         # Wrap text for display
         text_content = texts[i]
-        # Simple wrapping
         wrapped_text = ""
         words = text_content.split()
         line = ""
         for word in words:
             if len(line) + len(word) > 40:
-                wrapped_text += line + "\\n"
+                wrapped_text += line + "\n"
                 line = word + " "
             else:
                 line += word + " "
         wrapped_text += line
-        
+
         ax.text(0.5, -0.05, wrapped_text, ha='center', va='top', transform=ax.transAxes, fontsize=9, wrap=True)
 
     plt.tight_layout()
